@@ -40,16 +40,19 @@ regx = bson.regex.Regex("譲","求")
 
 pipeline = [
     {"$match":{"text":{"$not":regx}}},
-    #tweetdata中のtextからregxに該当するものを避ける
+    ###tweetdata中のtextからregxに該当するものを避ける
     {"$group":{"_id":"$text"}},
-    #重複するtextが表示されなくなる
-    {"$sample":{"size":10}}
-    #ランダムでｎ件返却
+    ###重複するtextが表示されなくなる
+    {"$sample":{"size":10}},
+    ###ランダムでｎ件返却
+    ###{"$project":{'_id':1, 'id':1, 'text':1,'noun':1,'verb':1,'adjective':1,'adverb':1}}
+    ###$project:出力する項目を指定することが出来る。
 ]
 
 
 sample_data = tweetdata.aggregate(pipeline) #配列
 
+x = list(sample_data)
 
 def mecab_analysis(sentence):
     t = mc.Tagger(r"C:\Program Files\mecab-ipadic-neologd")
@@ -73,7 +76,7 @@ def mecab_analysis(sentence):
 
         
 
-for d in sample_data.find({},{'_id':1, 'id':1, 'text':1,'noun':1,'verb':1,'adjective':1,'adverb':1}):
+for d in x.find({},{'_id':1, 'id':1, 'text':1,'noun':1,'verb':1,'adjective':1,'adverb':1}):
     ###tweetdataのすべてを対象に、オブジェクトid、ID、本文、名詞、動詞、形容詞、副詞を返却⇒ｄ
     res = mecab_analysis(unicodedata.normalize('NFKC', d['text'])) # 半角カナを全角カナに
 
@@ -83,7 +86,7 @@ for d in sample_data.find({},{'_id':1, 'id':1, 'text':1,'noun':1,'verb':1,'adjec
             adjective_list = []    ###形容詞リストをつくる（初期化？）
             for w in res[k]:                adjective_list.append(w)   
                 ###resはResponseオブジェクトで、通信結果を保持しています。append():末尾に要素を追加
-            sample_data.update_one({'_id' : d['_id']},{'$push': {'adjective':{'$each':adjective_list}}})
+            x.update_one({'_id' : d['_id']},{'$push': {'adjective':{'$each':adjective_list}}})
             ###$push:配列に指定された値を追加します。$each:配列フィールドに複数の値を追加します。
             ###update()メソッドの引数に別の辞書オブジェクトを指定すると、その辞書オブジェクトの要素がすべて追加される。
             ###⇒d["_id"] を ドキュメント(mongoDBの一つのデータのこと)の _id(識別子) としてpush(追加)する
@@ -91,21 +94,21 @@ for d in sample_data.find({},{'_id':1, 'id':1, 'text':1,'noun':1,'verb':1,'adjec
             verb_list = []
             for w in res[k]:
                 verb_list.append(w)
-            sample_data.update_one({'_id' : d['_id']},{'$push': {'verb':{'$each':verb_list}}})
+            x.update_one({'_id' : d['_id']},{'$push': {'verb':{'$each':verb_list}}})
         elif k == u'名詞': # noun
             noun_list = []
             for w in res[k]:                noun_list.append(w)
-            sample_data.update_one({'_id' : d['_id']},{'$push': {'noun':{'$each':noun_list}}})
+            x.update_one({'_id' : d['_id']},{'$push': {'noun':{'$each':noun_list}}})
         elif k == u'副詞': # adverb
             adverb_list = []
             for w in res[k]:
                 adverb_list.append(w)
-            sample_data.update_one({'_id' : d['_id']},{'$push': {'adverb':{'$each':adverb_list}}})
+            x.update_one({'_id' : d['_id']},{'$push': {'adverb':{'$each':adverb_list}}})
     # 形態素解析済みのツイートにMecabedフラグの追加
-    sample_data.update_one({'_id' : d['_id']},{'$set': {'mecabed':True}})
+    x.update_one({'_id' : d['_id']},{'$set': {'mecabed':True}})
 
 
-for data in sample_data:
+for data in x:
     print(data["_id"])
 
     #for {中で使うための変数名} in {コレクション（配列など）}:
